@@ -1,0 +1,76 @@
+/************************************************************
+ * userChrome.css (macOS 适配版)
+ * 目标：标签栏隐藏；地址栏自动隐藏；鼠标移到顶部/键盘交互时显示
+ ************************************************************/
+
+/* ========== 0) 可调参数 ========== */
+/* 说明：
+ * - --uc-nav-height：导航栏（#nav-bar）高度，和“紧凑/正常/宽松”密度有关
+ * - --uc-nav-reveal：隐藏状态下保留的“触发条”高度（越大越容易触发 hover）
+ * - --uc-macos-menubar-padding：macOS 全屏时，为系统菜单栏预留的顶部空间
+ *
+ * macOS 菜单栏高度在不同机型/缩放下会不同；28px 是常见起点，可按现象微调。
+ */
+:root {
+    --uc-nav-height: 42px;
+    --uc-nav-reveal: 3px;
+    --uc-macos-menubar-padding: 28px;
+    --uc-transition: 0.20s;
+}
+
+/* ========== 1) 隐藏标签栏 ========== */
+#main-window[tabsintitlebar="true"]:not([extradragspace="true"]) #TabsToolbar>.toolbar-items {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#main-window:not([tabsintitlebar="true"]) #TabsToolbar {
+    visibility: collapse !important;
+}
+
+/* ========== 2) 隐藏标题栏（包含窗口控制按钮/拖拽区） ========== */
+#titlebar {
+    display: none !important;
+}
+
+/* ========== 3) 地址栏自动隐藏：默认隐藏，触发时显示 ========== */
+#navigator-toolbox {
+    position: relative;
+    z-index: 10;
+    /* 使工具栏覆盖网页内容而不是被网页覆盖 */
+    padding-top: 0;
+    /* 全屏时会在“显示状态”里临时改成 menubar padding */
+}
+
+/* 隐藏状态：把 #nav-bar 向上移，只留一条触发条 */
+#nav-bar {
+    margin-top: calc(-1 * (var(--uc-nav-height) - var(--uc-nav-reveal)));
+    transition: margin-top var(--uc-transition) ease-in-out;
+}
+
+/* 显示状态触发条件：
+ * 1) 鼠标悬停在顶部工具栏区域
+ * 2) 顶部工具栏内有焦点（例如 Cmd+L，或地址栏/按钮被聚焦）
+ * 3) mainPopupSet 内有焦点（例如 Cmd+D 打开“编辑书签”面板后焦点进入面板）
+ *
+ * 第 3 条的原因：编辑书签面板属于 popupset 中的面板（editBookmarkPanel），
+ * 通过 mainPopupSet:focus-within 可以在“纯键盘触发”的场景下强制展开工具栏。
+ */
+#navigator-toolbox:hover #nav-bar,
+#navigator-toolbox:focus-within #nav-bar,
+#mainPopupSet:focus-within~#navigator-toolbox #nav-bar {
+    margin-top: 0;
+}
+
+/* ========== 4) macOS 全屏适配：避免系统菜单栏遮挡 ========== */
+/* 说明：macOS 全屏时，鼠标移到屏幕顶端会出现系统菜单栏。
+ * 工具栏如果出现在 y=0 附近，就会被菜单栏遮住。
+ *
+ * 处理方式：当工具栏“展开显示”时，给 #navigator-toolbox 增加 padding-top，
+ * 把 Firefox 的工具栏整体下移到菜单栏下方。类似思路在 macOS 全屏隐藏工具栏的 userChrome 方案里常见。
+ */
+#main-window[sizemode="fullscreen"] #navigator-toolbox:hover,
+#main-window[sizemode="fullscreen"] #navigator-toolbox:focus-within,
+#main-window[sizemode="fullscreen"] #mainPopupSet:focus-within~#navigator-toolbox {
+    padding-top: var(--uc-macos-menubar-padding);
+}
